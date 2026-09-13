@@ -1,0 +1,19 @@
+---
+title: "Assignment-Series01-Rstudio"
+date: last-modified
+date-format: "DD MMMM YYYY, HH:mm:ss"
+format:
+  pdf:
+    papersize: a4
+    geometry: margin=2cm
+---
+
+## 1. Conclusion in 4.1
+
+Running a Mann–Whitney U test on the 22-student dataset (7 females, 15 males) gave a p-value around 0.003–0.005 and a large effect size (r ≈ 0.60, confirmed by `wilcox_effsize()`). This matches the conclusion given in the assignment: there is a statistically significant difference between male and female median weight in this sample, with a large effect size. My result is the same as the one given, which makes sense we used the same non-parametric test appropriate for this small, unevenly-sized, non-normally-distributed sample, applied to the same underlying data.
+
+## 2. Three most important things I learned
+
+1.  How to move data from a raw external file into a clean, typed R object, and how to notice type-parsing issues (like a comma used as a decimal separator turning a numeric column into text).
+2.  How to build and reshape summary tables with the tidyverse "grammar" (`tibble()`, `group_by()`, `summarise()`), and how to choose and build the right plot (boxplot vs. histogram vs. density) for a given question with `ggplot2`.
+3.  How to move from a purely descriptive summary to an actual scientific comparison — choosing an appropriate statistical test given the sample size and shape of the data, and pairing it with the right visualization to communicate the result.
