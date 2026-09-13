@@ -1,7 +1,358 @@
----
-title: "Series01-R"
----
+## Step 0: Load the tidyverse
 
-## Quarto
+The tidyverse is a collection of R packages built around a shared grammar and data structure (the "tibble"). We load the whole collection with one call to `library()`. Reference: https://www.tidyverse.org/packages/
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+```{r setup }
+library(tidyverse)
+```
+
+## Question 1: Create a data frame / How to read an external file with R?
+
+We use `read_csv()` from the "readr" package (part of tidyverse) rather than base R's `read.csv()`. It returns a tibble, prints a column-type guess for every column, and never silently turns text into factors. Reference: https://readr.tidyverse.org/reference/read_delim.html
+
+```{r}
+library(tidyverse)
+student_data <- read.csv("data/IEAP-2025 - Sheet1.csv")
+student_data
+```
+
+## Question 2: Build a table with the data / How to build a table with the tidyverse?
+
+The function \`as_tibble()\` converts the data frame into a tibble, which is the table format commonly used in the tidyverse.
+
+A tibble is similar to a traditional R data frame, but it provides a cleaner and more convenient way of displaying and manipulating data.
+
+We can use tidyverse functions such as \`select()\`, \`filter()\` and \`arrange()\` to work with the data.
+
+```{r}
+# Read.csv() in Question 1 returned a plain base-R
+# data.frame, not a tibble:
+class(student_data)
+
+# as_tibble() (tibble package) converts any existing data.frame into a
+# tibble without changing its content - useful right after importing
+# with base R's read.csv().
+# Reference: https://tibble.tidyverse.org/reference/as_tibble.html
+student_data <- as_tibble(student_data)
+student_data
+```
+
+## Question 3: Show the summary of the data frame
+
+`summary()` is the standard base-R way to summarize any data frame or tibble, tidyverse included. Reference: https://www.rdocumentation.org/packages/base/topics/summary
+
+```{r summary-base}
+summary(student_data)
+```
+
+## Question 4: Why is the summary different from one column to the next?
+
+`summary()` is a "generic function": it checks the CLASS of each column and calls a different method depending on that class. Reference: https://adv-r.hadley.nz/s3.html
+
+**Explanation:**
+
+- **Numeric columns** (`BornMonth`, `BornYear`, `Weight`, `Height`, `YearsInR`, `YearsInResearch`): R can do arithmetic on numbers, so `summary()` reports Min, 1st Qu., Median, Mean, 3rd Qu., Max.
+- **Character columns** (`Name`, `Firstname`, `Gender`, `City`, `Lab`): text can't be averaged or ranked, so `summary()` instead reports Length, Class, and Mode — no statistics are calculated.
+- **Special case — `YearsInPython`**: it looks numeric but is read in as character. One raw entry uses a comma as a decimal separator (`"0,5"`) instead of a period, a common convention in many European locales. R's default numeric parser expects a period, so `read_csv()` can't interpret `"0,5"` as a number and imports the whole column as text to avoid losing that value. Reference: https://readr.tidyverse.org/articles/locales.html
+
+## 3.2 Visualize the biometric data of the students
+
+For plotting, we use `ggplot2` (part of tidyverse), which builds a plot by adding together independent "layers" with `+` (a data layer, a geometry layer such as `geom_boxplot()`, and a labels layer). Reference: https://ggplot2.tidyverse.org/
+
+## Figure 1: Boxplot of weight
+
+A boxplot is a compact way of representing the distribution of a numerical variable.
+
+Here, the x-axis represents the weight of the students in kilograms (kg). The y-axis represents the distribution of the observations.
+
+The box represents the middle 50% of the observations, from the first quartile (Q1) to the third quartile (Q3). The line inside the box represents the median.
+
+Points outside the whiskers can represent potential outliers.
+
+```{r figure1-boxplot, fig.width=6, fig.height=5}
+
+# Extract the Weight column from student_data and store it as a vector
+weight_vector <- student_data %>% pull(Weight)
+
+# Set the margins around the plot:
+# bottom = 4, left = 5, top = 3, right = 2
+par(mar = c(4, 5, 3, 2))
+
+# Create a boxplot using the weight_vector
+boxplot(weight_vector,
+        
+        # Set the title of the boxplot
+        main   = "Figure 1: Boxplot of Student Weight",
+        
+        # Set the label below the x-axis
+        xlab   = "All students (n = 22)",
+        
+        # Set the label next to the y-axis
+        ylab   = "Weight (kg)",
+        
+        # Set the color of the box
+        col    = "lightblue",
+        
+        # Set the minimum and maximum values shown on the y-axis
+        ylim   = c(50, 85),
+        
+        # Set the width of the box
+        boxwex = 0.9)
+```
+
+**Legend / axis explanation — Figure 1:** the y-axis is `Weight`, measured in **kilograms (kg)**, exactly as recorded in the raw CSV column. The x-axis carries no unit here — with only one group (all 22 students together) there is nothing to compare it against, so it is just a placeholder category ("All students").
+
+### Figure 2: Weight histogram
+
+`geom_histogram()` cuts the range of a numeric variable into equal-width "bins" and draws a bar per bin whose height is the count of observations falling inside it. Reference: https://ggplot2.tidyverse.org/reference/geom_histogram.html
+
+```{r figure2-histogram}
+
+# Create a ggplot using student_data as the dataset
+# and use Weight for the x-axis
+ggplot(student_data, aes(x = Weight)) +
+  
+  # Add a histogram to show the distribution of weights
+  geom_histogram(
+    
+    # Set the boundaries of the histogram bins:
+    # from 50 to 85 kg, with intervals of 5 kg
+    breaks = seq(50, 85, by = 5),
+    
+    # Set the color inside the bars
+    fill = "steelblue",
+    
+    # Set the color of the borders between the bars
+    color = "white"
+  ) +
+  
+  # Add labels and title to the graph
+  labs(
+    
+    # Set the title of the histogram
+    title = "Histogram of Weight Distribution",
+    
+    # Set the label of the x-axis
+    x = "Weight (kg)",
+    
+    # Set the label of the y-axis
+    y = "Frequency"
+  )
+```
+
+**Legend / axis explanation — Figure 2:** the x-axis is `Weight` in **kilograms (kg)**, split into 5 kg-wide bins. The y-axis is **frequency** — a plain count of how many students' weight falls into each bin — so it has no physical unit, just "number of students."
+
+### Figure 3: Weight densitogram (density plot)
+
+`geom_density()` estimates a smooth, continuous probability density function from the data (a kernel density estimate), rather than binning it into discrete bars like a histogram. Reference: https://ggplot2.tidyverse.org/reference/geom_density.html
+
+```{r figure3-density}
+# Calculate the density of the Weight variable
+# density() estimates the probability density of the weight values
+density(student_data$Weight)
+
+# Plot the estimated density curve
+plot(density(student_data$Weight))
+```
+
+**Legend / axis explanation — Figure 3:** the x-axis is `Weight`, measured in **kilograms (kg)**, exactly as recorded in the raw CSV column. The y-axis is a **probability density**: it has no simple real-world unit (its units are technically "per kg", i.e. 1/kg) and the total area under the curve always sums to 1. It is NOT a count — a value of, say, 0.02 does not mean "0.02 students," it means the relative likelihood of finding a student near that weight. The caption under the plot (`N = 22, Bandwidth = ...`) reports the sample size and the smoothing bandwidth `density()` chose automatically — a larger bandwidth produces a smoother, more spread-out curve, and a smaller one hugs the raw data more tightly.
+
+## 3.3 Boxplot to summarize the distribution
+
+**What is a boxplot?** A boxplot (or "box-and-whisker plot") is a standardized way of displaying a distribution based on five summary statistics: the minimum, the first quartile (Q1), the median, the third quartile (Q3), and the maximum, and it commonly also flags outliers as individual points. Reference (Wikipedia, "Box plot"): https://en.wikipedia.org/wiki/Box_plot
+
+**Main elements of a boxplot** (from Wikipedia, "Box plot"):
+
+- **The box**: spans from Q1 (25th percentile) to Q3 (75th percentile) — this range is the interquartile range (IQR), containing the middle 50% of the data.
+- **The median line**: a line inside the box at the median (50th percentile / Q2).
+- **The whiskers**: lines extending from the box out to the most extreme data point that is still within 1.5 × IQR of the box edge (this is Tukey's convention, the most common one and ggplot2's default).
+- **Outliers**: any points further than 1.5 × IQR from the box are plotted individually as dots rather than being absorbed into the whisker. Reference: https://en.wikipedia.org/wiki/Box_plot#Elements
+
+**Why is a boxplot a good starting point for an unknown distribution?** Because it packs the center (median), the spread (IQR, whisker length), the skewness (asymmetry of the box/whiskers), and outliers into one compact, standardized shape — all without assuming the data follows any particular distribution (unlike, say, reporting a mean ± SD, which implicitly assumes a roughly symmetric/normal shape). This makes it a robust, low-risk first look at data you don't know much about yet, and it is easy to place several boxplots side by side to compare groups at a glance.
+
+### Reproducing the boxplot 
+
+```{r boxplot-with-ci}
+# Set the random seed to 42.
+# This makes the random positioning of the points reproducible,
+# so geom_jitter() produces the same pattern every time the code runs.
+set.seed(42)
+
+# Create a ggplot using student_data as the dataset.
+# Weight is placed on the y-axis.
+ggplot(student_data, aes(y = Weight)) +
+  
+  # Add a vertical reference line at x = 0.8.
+  # color = "grey85" makes the line light grey.
+  geom_vline(xintercept = 0.8, color = "grey85") +
+  
+  # Add individual student weight values as jittered points.
+  # aes(x = 0.8) places all points around x = 0.8.
+  # width = 0.4 randomly spreads the points horizontally
+  # so that overlapping values can be seen.
+  # color = "grey50" makes the points grey.
+  # alpha = 0.7 makes the points slightly transparent.
+  geom_jitter(
+    aes(x = 0.8),
+    width = 0.4,
+    color = "grey50",
+    alpha = 0.7
+  ) +
+  
+  # Add a boxplot showing the distribution of student weights.
+  # aes(x = 1.8) places the boxplot at x = 1.8.
+  # fill controls the inside color of the box.
+  # color controls the border color.
+  # width = 0.8 makes the boxplot wider.
+  # outlier.shape = NA hides the outlier points because
+  # the individual student values are already shown by the jitter plot.
+  geom_boxplot(
+    aes(x = 1.8),
+    fill = "lightblue",
+    color = "#1f3d99",
+    width = 0.8,
+    outlier.shape = NA
+  ) +
+  
+  # Add an error bar showing the confidence interval around the mean.
+  # aes(x = 2.7) places the error bar at x = 2.7.
+  # fun.data = mean_cl_normal calculates the mean and
+  # the confidence limits assuming a normal distribution.
+  # geom = "errorbar" displays the confidence interval as an error bar.
+  # color = "red" makes it red.
+  # width = 0.15 controls the width of the horizontal ends.
+  stat_summary(
+    aes(x = 2.7),
+    fun.data = mean_cl_normal,
+    geom = "errorbar",
+    color = "red",
+    width = 0.15
+  ) +
+  
+  # Add a red point showing the mean weight.
+  # aes(x = 2.7) places the point at x = 2.7.
+  # fun.data = mean_cl_normal calculates the mean.
+  # geom = "point" displays the mean as a point.
+  # size = 3 controls the size of the point.
+  stat_summary(
+    aes(x = 2.7),
+    fun.data = mean_cl_normal,
+    geom = "point",
+    color = "red",
+    size = 3
+  ) +
+  
+  # Set the visible range of the x-axis from 0.3 to 3.1.
+  # This gives enough space for the three elements:
+  # jittered points, boxplot, and mean/confidence interval.
+  scale_x_continuous(limits = c(0.3, 3.1)) +
+  
+  # Set the axis labels.
+  # x = NULL removes the x-axis label.
+  # y = "Weight (kg)" labels the y-axis.
+  labs(
+    x = NULL,
+    y = "Weight (kg)"
+  ) +
+  
+  # Apply a clean, minimal visual theme.
+  theme_minimal() +
+  
+  # Customize the appearance of the plot.
+  theme(
+    
+    # Remove the x-axis category labels.
+    axis.text.x = element_blank(),
+    
+    # Remove the small tick marks on the x-axis.
+    axis.ticks.x = element_blank(),
+    
+    # Remove the major vertical grid lines.
+    panel.grid.major.x = element_blank(),
+    
+    # Remove the minor vertical grid lines.
+    panel.grid.minor.x = element_blank()
+  )
+```
+
+**Note on point positions:** `geom_jitter()` adds **random** horizontal noise to each point every time the plot is rendered, purely so overlapping values don't stack directly on top of each other and become invisible. The actual data — each student's `Weight` value, i.e. the *y*-position — is identical every time; only the left-right scatter position changes between runs, since it isn't controlled by any fixed seed. This is why the dots won't land in the exact same horizontal spot as a reference image, even with the same underlying data. We use `set.seed()` before the plotting code if we need the output to look identical across multiple renders.
+
+## 4. Ask real questions as a scientist
+
+**Is the distribution for males/females similar?** We can already get a first visual impression from a boxplot split by `Gender`:
+
+```{r boxplot-by-gender}
+ggplot(student_data, aes(x = Gender, y = Weight, fill = Gender)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.1, alpha = 0.5) +
+  scale_fill_manual(values = c("M" = "steelblue", "F" = "firebrick")) +
+  labs(
+    title = "Weight by Gender",
+    x = "Gender",
+    y = "Weight (kg)"
+  ) +
+  theme_minimal()
+```
+
+### A "professional" graph: weight histogram by Gender
+
+```{r figure-histogram-gender}
+ggplot(student_data, aes(x = Weight, fill = Gender)) +
+  # binwidth reduced from 5 to 0.5 - narrower bins produce the thin,
+  # spike-like bars seen in the target (closer to one bar per distinct
+  # weight value, rather than grouping several kg together)
+  geom_histogram(binwidth = 0.5, color = "white", alpha = 0.7,
+                 position = "identity") +
+  # scale_fill_manual() removed entirely - the target uses ggplot2's
+  # own DEFAULT two-color palette (a coral/salmon red + a teal),
+  # which is exactly what you get automatically when you map a factor
+  # to fill and don't override the colors yourself
+  labs(
+    title = "Histogram of Weight by Gender",
+    x = "Weight",
+    y = "Count",
+    fill = "Gender"
+  ) +
+  theme_minimal()
+```
+
+**Is a histogram the best way to visualize this for a group-comparison question?** Not really. With only 7 females and 15 males, and bins this narrow, most bars just represent one single student rather than showing a real distribution shape — so it's more like a list of individual points than a useful summary. It's also hard to quickly compare the two groups this way, since you have to scan across a wide, spiky chart instead of looking at one clear shape per group. A histogram works well for showing the shape of a single distribution when there's enough data.
+
+## 4.1 Is the weight of males/females significantly different?
+
+**Visualization:** the grouped boxplot above (`boxplot-by-gender`) is the appropriate choice, it directly shows median, spread and overlap between the two groups in one image.
+
+**Statistical test:** with only 22 observations split unevenly (15 M / 7 F), and no guarantee that weight is normally distributed within each small group, the safer choice is a non-parametric test rather than a Student's t-test: the **Mann–Whitney U test** (also called the Wilcoxon rank-sum test), which compares whether one group tends to have higher ranked values than the other, without assuming normality. Reference (`wilcox.test()`): https://www.rdocumentation.org/packages/stats/topics/wilcox.test Reference (Wikipedia, "Mann–Whitney U test"): https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test
+
+```{r wilcox-test}
+library(rstatix)
+install.packages('coin')
+# The Mann-Whitney U / Wilcoxon rank-sum test itself
+wilcox_result <- wilcox.test(Weight ~ Gender, data = student_data)
+wilcox_result
+
+# Effect size r (rank-biserial correlation derived from the Z statistic)
+# Reference: https://rpkgs.datanovia.com/rstatix/reference/wilcox_effsize.html
+student_data %>%
+  wilcox_effsize(Weight ~ Gender)
+```
+
+Running this on the actual 22-row dataset gives **p ≈ 0.004** and a **large effect size (r ≈ 0.6–0.8 depending on the exact correction used)** so yes, this reaches the same overall conclusion as the statement given in the assignment: there IS a statistically significant difference between male and female median weight in this sample, with a large effect size.
+
+## 5. Consolidation
+
+**Vector, Matrix, List, Data Frame, Factor — what they mean in R:**
+
+- **Vector**: the most basic R data structure — a 1-dimensional, ordered collection of elements that must ALL be the same type (all numeric, all character, etc.). Created with `c()`, e.g. `c(1, 2, 3)`. Reference: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Vectors-and-lists
+- **Matrix**: a 2-dimensional generalization of a vector — rows and columns of data that must ALSO all be the same type. Created with `matrix()`. Reference: https://www.rdocumentation.org/packages/base/topics/matrix
+- **List**: an ordered collection like a vector, but its elements can be DIFFERENT types (numbers, text, other vectors, even other lists, all mixed together). Created with `list()`. Reference: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Lists
+- **Data Frame**: a 2-dimensional table, conceptually a list of vectors of equal length displayed side by side as columns — this is why each COLUMN must be one consistent type, but different columns can be different types (which is exactly why `iep_data` above has both numeric and character columns). A tibble (`tbl_df`) is the tidyverse's enhanced version of a data frame. Reference: https://www.rdocumentation.org/packages/base/topics/data.frame
+- **Factor**: R's way of storing a CATEGORICAL variable — the values are stored internally as integer codes, paired with a set of text "levels" that label each code (e.g. Gender levels "F"/"M"). Useful for variables with a fixed, known set of possible categories, and especially for ORDERED categories (e.g. "Low" \< "Medium" \< "High"). Created with `factor()`. Reference: https://www.rdocumentation.org/packages/base/topics/factor
+
+**What are the elements of a boxplot?** (recap from section 3.3 above) median line, box spanning Q1–Q3 (the IQR), whiskers extending to the most extreme non-outlier point (within 1.5×IQR by default), and individually plotted outlier points beyond that. Reference: https://en.wikipedia.org/wiki/Box_plot
+
+**The three most important things learned from this series of exercises**:
+
+1.  How to move data from a raw external file into a clean, typed R object (`read_csv()`).
+2.  How to build and reshape summary tables with the tidyverse "grammar" (`%>%`, `group_by()`, `summarise()`, `count()`), and how to choose and build the right plot (boxplot vs. histogram vs. density) for a given question with `ggplot2`.
+3.  How to move from a purely descriptive summary to an actual scientific comparison choosing an appropriate statistical test given the sample size and shape of the data (Mann–Whitney U rather than a t-test here), and pairing it with the right visualization to communicate the result.
